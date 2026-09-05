@@ -2,6 +2,7 @@ package com.itheima.reggie.controller;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import com.itheima.reggie.common.BaseContext;
 import com.itheima.reggie.common.R;
 import com.itheima.reggie.entity.Employee;
 import com.itheima.reggie.service.EmployeeService;
@@ -118,12 +119,31 @@ public class EmployeeController {
 
     /**
      * 根据id修改员工信息
+     * 权限说明：仅管理员(admin)可以修改其他员工信息及启用/禁用账号；
+     *          普通员工只能修改自己的资料，且不允许修改账号状态(防止误禁用/越权)
      * @param employee
      * @return
      */
     @PutMapping
     public R<String> update(@RequestBody Employee employee){
         log.info(employee.toString());
+
+        //1、获取当前登录用户，判断是否为管理员
+        Long currentId = BaseContext.getCurrentId();
+        Employee current = employeeService.getById(currentId);
+        boolean isAdmin = current != null && "admin".equals(current.getUsername());
+
+        //2、非管理员进行权限校验
+        if(!isAdmin){
+            //2.1 只能修改自己的信息(目标id为空或不是自己，直接拒绝)
+            if(employee.getId() == null || !employee.getId().equals(currentId)){
+                return R.error("您没有权限修改其他员工的信息");
+            }
+            //2.2 修改自己时不允许修改账号状态(启/禁用属于管理员权限)
+            if(employee.getStatus() != null){
+                return R.error("您没有权限修改员工账号状态");
+            }
+        }
 
         //updateTime/updateUser 由 MyMetaObjectHandler 公共字段自动填充
         employeeService.updateById(employee);
