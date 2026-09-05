@@ -3,6 +3,7 @@ target/
 
 # IDE local files (keep the shared project files under .idea/)
 .idea/vcs.xml
+.idea/claudeCodeTabState.xml
 
 # PDF extraction artifacts (local reference only)
 pdf_extract/

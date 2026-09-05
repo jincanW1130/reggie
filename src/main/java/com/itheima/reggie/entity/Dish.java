@@ -3,47 +3,54 @@ package com.itheima.reggie.entity;
 import com.baomidou.mybatisplus.annotation.FieldFill;
 import com.baomidou.mybatisplus.annotation.TableField;
 import lombok.Data;
+
 import java.io.Serializable;
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
 /**
- * 员工实体
+ * 菜品
  */
 @Data
-public class Employee implements Serializable {
+public class Dish implements Serializable {
 
     private static final long serialVersionUID = 1L;
 
     private Long id;
 
-    private String username;
-
+    //菜品名称
     private String name;
 
-    private String password;
+    //菜品分类id
+    private Long categoryId;
 
-    private String phone;
+    //菜品价格
+    private BigDecimal price;
 
-    private String sex;
+    //商品码
+    private String code;
 
-    private String idNumber;//身份证号码
+    //图片
+    private String image;
 
+    //描述信息
+    private String description;
+
+    //0 停售 1 起售
     private Integer status;
 
-    //创建时间
+    //顺序
+    private Integer sort;
+
     @TableField(fill = FieldFill.INSERT)
     private LocalDateTime createTime;
 
-    //更新时间
     @TableField(fill = FieldFill.INSERT_UPDATE)
     private LocalDateTime updateTime;
 
-    //创建人
     @TableField(fill = FieldFill.INSERT)
     private Long createUser;
 
-    //修改人
     @TableField(fill = FieldFill.INSERT_UPDATE)
     private Long updateUser;
-
 }
