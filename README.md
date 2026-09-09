@@ -2,7 +2,16 @@
 
 瑞吉外卖是专门为餐饮企业（餐厅、饭店）定制的一款软件产品，包括 **系统管理后台** 和 **移动端应用** 两部分。
 
-本仓库基于《瑞吉外卖》课程讲义 **Day01 / Day02 / Day03** 完成，当前进度覆盖：
+本仓库基于《瑞吉外卖》课程讲义 **Day01 ~ Day04** 完成，当前进度覆盖：
+
+## ✅ 已完成功能（Day04）
+
+- **文件上传/下载**：`CommonController`（`POST /common/upload`、`GET /common/download`），图片存储目录配置于 `application.yml`（`reggie.path`），过滤器放行 `/common/**`；演示页 `backend/page/demo/upload.html`
+- **菜品分类下拉查询**：`GET /category/list?type=1`（按 sort 升序、updateTime 倒序）
+- **新增菜品**：`POST /dish`（`DishDto` 封装口味列表，同时写入 dish + dish_flavor 两张表，`@Transactional` 保证一致性，引导类开启事务）
+- **菜品分页查询**：`GET /dish/page`（返回 `DishDto` 并封装分类名称 `categoryName`）
+- **菜品修改**：`GET /dish/{id}` 回显（含口味）+ `PUT /dish` 修改（口味按“先删除后添加”更新）
+- 配套新增 `DishFlavor` 实体/Mapper/Service、`dto/DishDto`、`DishController`
 
 ## ✅ 已完成功能（Day01）
 
@@ -35,14 +44,15 @@
 src/main/java/com/itheima/reggie/
 ├── common      # 通用结果 R、全局异常处理、Jackson 对象转换器、BaseContext(ThreadLocal)、MyMetaObjectHandler(公共字段填充)、CustomException
 ├── config      # WebMvcConfig(静态资源映射/消息转换器)、MybatisPlusConfig(分页插件)
-├── controller  # EmployeeController（员工登录/退出/新增/分页/修改/编辑回显）、CategoryController（分类增删改查）
-├── entity      # Employee / Category / Dish / Setmeal
+├── controller  # EmployeeController、CategoryController、DishController（菜品增改查）、CommonController（文件上传下载）
+├── dto         # DishDto（菜品 + 口味列表 + 分类名称）
+├── entity      # Employee / Category / Dish / DishFlavor / Setmeal
 ├── filter      # LoginCheckFilter（登录校验过滤器，登录用户id写入ThreadLocal）
-├── mapper      # EmployeeMapper / CategoryMapper / DishMapper / SetmealMapper
-├── service     # Employee/Category/Dish/Setmeal Service 及实现
+├── mapper      # Employee/Category/Dish/DishFlavor/Setmeal Mapper
+├── service     # Employee/Category/Dish/DishFlavor/Setmeal Service 及实现
 └── ReggieApplication
 src/main/resources/
-├── application.yml   # 端口、数据源、MyBatis-Plus 配置
+├── application.yml   # 端口、数据源、MyBatis-Plus 配置、reggie.path(图片目录)
 ├── backend           # 系统管理后台前端静态资源
 ├── front             # 移动端前端静态资源
 └── reggie.sql        # 数据库脚本（11 张表）
@@ -80,6 +90,13 @@ src/main/resources/
 | 分类分页查询 | GET `/category/page` | 参数 page / pageSize，按 sort 升序 |
 | 删除分类 | DELETE `/category?ids=` | 关联菜品/套餐时提示不可删除 |
 | 修改分类 | PUT `/category` | {id, name, sort} |
+| 分类下拉列表 | GET `/category/list` | 参数 type(1菜品/2套餐) |
+| 文件上传 | POST `/common/upload` | multipart，参数 file |
+| 文件下载 | GET `/common/download` | 参数 name(文件名) |
+| 新增菜品 | POST `/dish` | DishDto：基本信息 + flavors 口味列表 |
+| 菜品分页查询 | GET `/dish/page` | 参数 page / pageSize / name，含 categoryName |
+| 菜品详情回显 | GET `/dish/{id}` | 返回菜品 + 口味列表 |
+| 修改菜品 | PUT `/dish` | 口味“先删后插”更新 |
 
 ## 🔐 权限说明
 

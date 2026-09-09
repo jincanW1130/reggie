@@ -44,7 +44,7 @@ public class LoginCheckFilter implements Filter{
         String[] urls = new String[]{
                 "/employee/login",
                 "/employee/logout",
-//                "/backend/**",
+                "/common/**",               //文件上传/下载(图片等), 免登录便于测试
 
                 "/backend/page/login/**",   //登录页
                 "/backend/api/**",          //前端接口封装的js静态资源
