@@ -45,15 +45,17 @@ public class LoginCheckFilter implements Filter{
                 "/employee/login",
                 "/employee/logout",
                 "/common/**",               //文件上传/下载(图片等), 免登录便于测试
+                "/user/sendMsg",            //移动端: 发送短信验证码
+                "/user/login",              //移动端: 手机验证码登录
 
-                "/backend/page/login/**",   //登录页
+                "/backend/page/login/**",   //后台登录页
                 "/backend/api/**",          //前端接口封装的js静态资源
                 "/backend/images/**",       //图片静态资源
                 "/backend/js/**",           //js静态资源
                 "/backend/plugins/**",      //第三方插件(vue/element-ui/axios等)
                 "/backend/styles/**",       //样式静态资源
                 "/backend/favicon.ico",     //网站图标
-                "/front/**"                 //移动端前端页面(C端登录后续课程实现)
+                "/front/**"                 //移动端前端静态页面
         };
 
         //2、判断本次请求是否需要处理
@@ -76,6 +78,19 @@ public class LoginCheckFilter implements Filter{
                 filterChain.doFilter(request,response);
             } finally {
                 //请求处理完毕后移除，避免Tomcat线程复用造成数据串扰
+                BaseContext.removeCurrentId();
+            }
+            return;
+        }
+
+        //4-2、判断移动端(C端)登录状态，如果已登录，则直接放行
+        if(request.getSession().getAttribute("user") != null){
+            log.info("移动端用户已登录，用户id为：{}",request.getSession().getAttribute("user"));
+            Long userId = (Long) request.getSession().getAttribute("user");
+            BaseContext.setCurrentId(userId);
+            try {
+                filterChain.doFilter(request,response);
+            } finally {
                 BaseContext.removeCurrentId();
             }
             return;

@@ -63,7 +63,14 @@
                     const regex = /^(13[0-9]{9})|(15[0-9]{9})|(17[0-9]{9})|(18[0-9]{9})|(19[0-9]{9})$/;
                     if (regex.test(this.form.phone)) {
                         this.msgFlag = false
-                        this.form.code = (Math.random()*1000000).toFixed(0)
+                        //调用服务端接口发送短信验证码(验证码通过服务端日志输出，测试时从控制台获取)
+                        sendMsgApi({phone:this.form.phone}).then(res => {
+                            if(res.code === 1){
+                                this.$notify({ type:'success', message:'验证码已发送，请查看服务端控制台日志'});
+                            }else{
+                                this.$notify({ type:'warning', message:res.msg});
+                            }
+                        })
                     }else{
                         this.msgFlag = true
                     }
@@ -71,7 +78,7 @@
                 async btnLogin(){
                     if(this.form.phone && this.form.code){
                         this.loading = true
-                        const res = await loginApi({phone:this.form.phone})
+                        const res = await loginApi({phone:this.form.phone, code:this.form.code})
                         this.loading = false
                         if(res.code === 1){
                             sessionStorage.setItem("userPhone",this.form.phone)

@@ -2,16 +2,7 @@
 
 瑞吉外卖是专门为餐饮企业（餐厅、饭店）定制的一款软件产品，包括 **系统管理后台** 和 **移动端应用** 两部分。
 
-本仓库基于《瑞吉外卖》课程讲义 **Day01 ~ Day04** 完成，当前进度覆盖：
-
-## ✅ 已完成功能（Day04）
-
-- **文件上传/下载**：`CommonController`（`POST /common/upload`、`GET /common/download`），图片存储目录配置于 `application.yml`（`reggie.path`），过滤器放行 `/common/**`；演示页 `backend/page/demo/upload.html`
-- **菜品分类下拉查询**：`GET /category/list?type=1`（按 sort 升序、updateTime 倒序）
-- **新增菜品**：`POST /dish`（`DishDto` 封装口味列表，同时写入 dish + dish_flavor 两张表，`@Transactional` 保证一致性，引导类开启事务）
-- **菜品分页查询**：`GET /dish/page`（返回 `DishDto` 并封装分类名称 `categoryName`）
-- **菜品修改**：`GET /dish/{id}` 回显（含口味）+ `PUT /dish` 修改（口味按“先删除后添加”更新）
-- 配套新增 `DishFlavor` 实体/Mapper/Service、`dto/DishDto`、`DishController`
+本仓库基于《瑞吉外卖》课程讲义 **Day01 ~ Day05** 完成，当前进度覆盖：
 
 ## ✅ 已完成功能（Day01）
 
@@ -38,18 +29,39 @@
 - **修改分类**
 - 配套新增 `Category` / `Dish` / `Setmeal` 实体及其 Mapper / Service 分层
 
+## ✅ 已完成功能（Day04）
+
+- **文件上传/下载**：`CommonController`（`POST /common/upload`、`GET /common/download`），图片存储目录配置于 `application.yml`（`reggie.path`），过滤器放行 `/common/**`；演示页 `backend/page/demo/upload.html`
+- **菜品分类下拉查询**：`GET /category/list?type=1`（按 sort 升序、updateTime 倒序）
+- **新增菜品**：`POST /dish`（`DishDto` 封装口味列表，同时写入 dish + dish_flavor 两张表，`@Transactional` 保证一致性，引导类开启事务）
+- **菜品分页查询**：`GET /dish/page`（返回 `DishDto` 并封装分类名称 `categoryName`）
+- **菜品修改**：`GET /dish/{id}` 回显（含口味）+ `PUT /dish` 修改（口味按“先删除后添加”更新）
+- 配套新增 `DishFlavor` 实体/Mapper/Service、`dto/DishDto`、`DishController`
+
+## ✅ 已完成功能（Day05）
+
+- **按分类查询起售菜品**：`GET /dish/list?categoryId=`（新增套餐时选择菜品用，仅返回 status=1 并按 sort 升序）
+- **新增套餐**：`POST /setmeal`（`SetmealDto` 封装套餐关联菜品，写入 setmeal + setmeal_dish 两张表，`@Transactional`）
+- **套餐分页查询**：`GET /setmeal/page`（返回 `SetmealDto` 并封装 `categoryName`）
+- **删除套餐**：`DELETE /setmeal?ids=`（支持单个/批量；**售卖中的套餐不允许删除**，抛 `CustomException` 提示；同时清理 setmeal_dish 关联数据）
+- **短信发送**：引入阿里云短信 SDK，`utils/SMSUtils` 发送工具类（个人无法申请签名/模板，测试时验证码通过日志输出）
+- **手机验证码登录（C端）**：`utils/ValidateCodeUtils` 生成 4 位验证码；`POST /user/sendMsg`（验证码存入 Session）、`POST /user/login`（校验验证码，新手机号自动注册 user 表并写入 Session）
+- `LoginCheckFilter` 放行 `/user/sendMsg`、`/user/login`，并新增 **C 端登录态判定**（Session 中的 `user` → 写入 ThreadLocal 后放行）
+- 前端适配：`front/api/login.js` 增加 `sendMsgApi`、`front/page/login.html` 接入发送验证码并携带 code 登录、`front/js/request.js` 未登录统一按 `NOTLOGIN` 跳转登录页
+
 ## 📁 项目结构
 
 ```
 src/main/java/com/itheima/reggie/
 ├── common      # 通用结果 R、全局异常处理、Jackson 对象转换器、BaseContext(ThreadLocal)、MyMetaObjectHandler(公共字段填充)、CustomException
 ├── config      # WebMvcConfig(静态资源映射/消息转换器)、MybatisPlusConfig(分页插件)
-├── controller  # EmployeeController、CategoryController、DishController（菜品增改查）、CommonController（文件上传下载）
-├── dto         # DishDto（菜品 + 口味列表 + 分类名称）
-├── entity      # Employee / Category / Dish / DishFlavor / Setmeal
-├── filter      # LoginCheckFilter（登录校验过滤器，登录用户id写入ThreadLocal）
-├── mapper      # Employee/Category/Dish/DishFlavor/Setmeal Mapper
-├── service     # Employee/Category/Dish/DishFlavor/Setmeal Service 及实现
+├── controller  # EmployeeController、CategoryController、DishController、SetmealController、CommonController(文件上传下载)、UserController(C端登录)
+├── dto         # DishDto（菜品 + 口味 + 分类名称）、SetmealDto（套餐 + 关联菜品 + 分类名称）
+├── entity      # Employee / Category / Dish / DishFlavor / Setmeal / SetmealDish / User
+├── filter      # LoginCheckFilter（后台员工 + C端用户登录校验，登录id写入ThreadLocal）
+├── mapper      # Employee/Category/Dish/DishFlavor/Setmeal/SetmealDish/User Mapper
+├── service     # 各模块 Service 及实现
+├── utils       # SMSUtils(阿里云短信)、ValidateCodeUtils(验证码生成)
 └── ReggieApplication
 src/main/resources/
 ├── application.yml   # 端口、数据源、MyBatis-Plus 配置、reggie.path(图片目录)
@@ -97,6 +109,12 @@ src/main/resources/
 | 菜品分页查询 | GET `/dish/page` | 参数 page / pageSize / name，含 categoryName |
 | 菜品详情回显 | GET `/dish/{id}` | 返回菜品 + 口味列表 |
 | 修改菜品 | PUT `/dish` | 口味“先删后插”更新 |
+| 按分类查询菜品 | GET `/dish/list` | 参数 categoryId，仅返回起售(status=1)菜品 |
+| 新增套餐 | POST `/setmeal` | SetmealDto：套餐信息 + setmealDishes 关联菜品 |
+| 套餐分页查询 | GET `/setmeal/page` | 参数 page / pageSize / name，含 categoryName |
+| 删除套餐 | DELETE `/setmeal?ids=` | 支持批量；售卖中的套餐不可删除，同时清理关联表 |
+| C端发送验证码 | POST `/user/sendMsg` | {phone}，验证码存 Session 并打印在服务端日志 |
+| C端验证码登录 | POST `/user/login` | {phone, code}，新手机号自动注册 |
 
 ## 🔐 权限说明
 

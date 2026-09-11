@@ -7,3 +7,6 @@ target/
 
 # PDF extraction artifacts (local reference only)
 pdf_extract/
+
+# Local project copy used for comparison (do not track)
+reggie_take_out对比/
