@@ -2,7 +2,7 @@
 
 瑞吉外卖是专门为餐饮企业（餐厅、饭店）定制的一款软件产品，包括 **系统管理后台** 和 **移动端应用** 两部分。
 
-本仓库基于《瑞吉外卖》课程讲义 **Day01 ~ Day05** 完成，当前进度覆盖：
+本仓库基于《瑞吉外卖》课程讲义 **Day01 ~ Day06** 完成，当前进度覆盖：
 
 ## ✅ 已完成功能（Day01）
 
@@ -76,6 +76,7 @@ src/main/resources/
 ├── backend           # 系统管理后台前端静态资源
 ├── front             # 移动端前端静态资源
 └── reggie.sql        # 数据库脚本（11 张表）
+dish-images/          # 菜品/套餐配图（文件名与数据库中 image 字段一致，含 manifest.json）
 ```
 
 ## 🚀 运行步骤
@@ -101,6 +102,24 @@ src/main/resources/
    - 登录页：<http://localhost:8080/front/page/login.html>
    - 输入手机号 → 点击“获取验证码” → **验证码打印在服务端控制台日志中**（形如 `code=5872`）→ 输入后登录
    - 登录后可体验点餐、地址簿、购物车与下单；菜品图片存放于 `reggie.path` 配置的目录
+
+## 🖼️ 菜品图片（dish-images/）
+
+`reggie.sql` 里菜品/套餐的 `image` 字段保存的是图片文件名（如 `f966a38e-....jpg`），但导入 SQL 时磁盘上并没有这些图片，所以菜品列表会出现“图片显示不出来”的情况。
+
+本仓库 `dish-images/` 目录已补齐全部 **23 道菜品 + 1 个套餐** 的配图，**文件名与数据库中 `dish.image` / `setmeal.image` 的取值一一对应**（见 `dish-images/manifest.json`）。
+
+使用方式（把图片放进 `application.yml` 中 `reggie.path` 指向的目录，默认为 `D:\img\`）：
+
+```powershell
+# Windows PowerShell
+New-Item -ItemType Directory -Force D:\img | Out-Null
+Copy-Item dish-images\* D:\img\ -Exclude manifest.json
+```
+
+之后启动项目，后台「菜品管理」列表与移动端点餐页即可正常显示菜品图片。
+
+> 图片来自公开美食菜谱站点（下厨房等）的成品菜照片，仅用于课程演示与本地练习；如需商用请替换为自有素材或正版图库图片。
 
 ## ⚙️ 主要接口
 
