@@ -49,18 +49,26 @@
 - `LoginCheckFilter` 放行 `/user/sendMsg`、`/user/login`，并新增 **C 端登录态判定**（Session 中的 `user` → 写入 ThreadLocal 后放行）
 - 前端适配：`front/api/login.js` 增加 `sendMsgApi`、`front/page/login.html` 接入发送验证码并携带 code 登录、`front/js/request.js` 未登录统一按 `NOTLOGIN` 跳转登录页
 
+## ✅ 已完成功能（Day06）
+
+- **用户地址簿**：`AddressBookController`（`POST /addressBook` 新增、`PUT /addressBook` 修改、`DELETE /addressBook?ids=` 删除、`GET /addressBook/{id}` 详情、`PUT /addressBook/default` 设置默认地址、`GET /addressBook/default` 查询默认地址、`GET /addressBook/list` 查询当前用户全部地址）；地址与当前登录用户（`BaseContext`）绑定，默认地址通过“先全部置 0、再置 1”实现
+- **菜品展示（移动端）**：`GET /dish/list` 改为返回 `R<List<DishDto>>`，在菜品基础上封装**口味列表 flavors**与分类名称；`GET /setmeal/list` 按分类与状态查询套餐
+- **购物车**：`POST /shoppingCart/add`（同一菜品/套餐只累加 number，不新增记录）、`GET /shoppingCart/list`（按创建时间升序）、`DELETE /shoppingCart/clean`（清空当前用户购物车）
+- **下单**：`POST /order/submit` → `OrderService.submit`（`@Transactional`）：校验购物车非空、校验收货地址、用 `IdWorker` 生成订单号、`AtomicInteger` 累加总金额、写入 orders 一条 + order_detail 多条、下单后清空购物车
+- 配套新增 `AddressBook` / `ShoppingCart` / `Orders` / `OrderDetail` 实体及其 Mapper、Service 分层
+
 ## 📁 项目结构
 
 ```
 src/main/java/com/itheima/reggie/
 ├── common      # 通用结果 R、全局异常处理、Jackson 对象转换器、BaseContext(ThreadLocal)、MyMetaObjectHandler(公共字段填充)、CustomException
 ├── config      # WebMvcConfig(静态资源映射/消息转换器)、MybatisPlusConfig(分页插件)
-├── controller  # EmployeeController、CategoryController、DishController、SetmealController、CommonController(文件上传下载)、UserController(C端登录)
+├── controller  # EmployeeController、CategoryController、DishController、SetmealController、CommonController(文件上传下载)、UserController(C端登录)、AddressBookController、ShoppingCartController、OrderController
 ├── dto         # DishDto（菜品 + 口味 + 分类名称）、SetmealDto（套餐 + 关联菜品 + 分类名称）
-├── entity      # Employee / Category / Dish / DishFlavor / Setmeal / SetmealDish / User
+├── entity      # Employee / Category / Dish / DishFlavor / Setmeal / SetmealDish / User / AddressBook / ShoppingCart / Orders / OrderDetail
 ├── filter      # LoginCheckFilter（后台员工 + C端用户登录校验，登录id写入ThreadLocal）
-├── mapper      # Employee/Category/Dish/DishFlavor/Setmeal/SetmealDish/User Mapper
-├── service     # 各模块 Service 及实现
+├── mapper      # 各实体对应的 Mapper
+├── service     # 各模块 Service 及实现（含 OrderService.submit 下单事务）
 ├── utils       # SMSUtils(阿里云短信)、ValidateCodeUtils(验证码生成)
 └── ReggieApplication
 src/main/resources/
@@ -87,6 +95,12 @@ src/main/resources/
 
    - 登录页：<http://localhost:8080/backend/page/login/login.html>
    - 默认账号：`admin`，密码：`123456`
+
+5. 移动端（C端）体验：
+
+   - 登录页：<http://localhost:8080/front/page/login.html>
+   - 输入手机号 → 点击“获取验证码” → **验证码打印在服务端控制台日志中**（形如 `code=5872`）→ 输入后登录
+   - 登录后可体验点餐、地址簿、购物车与下单；菜品图片存放于 `reggie.path` 配置的目录
 
 ## ⚙️ 主要接口
 
@@ -115,6 +129,15 @@ src/main/resources/
 | 删除套餐 | DELETE `/setmeal?ids=` | 支持批量；售卖中的套餐不可删除，同时清理关联表 |
 | C端发送验证码 | POST `/user/sendMsg` | {phone}，验证码存 Session 并打印在服务端日志 |
 | C端验证码登录 | POST `/user/login` | {phone, code}，新手机号自动注册 |
+| 按分类查询套餐 | GET `/setmeal/list` | 参数 categoryId / status |
+| 新增/修改/删除地址 | POST / PUT / DELETE `/addressBook` | 地址与当前登录用户绑定 |
+| 设置默认地址 | PUT `/addressBook/default` | 先全部置 0，再当前置 1 |
+| 查询默认地址 | GET `/addressBook/default` | 当前用户 is_default=1 的地址 |
+| 地址列表 | GET `/addressBook/list` | 当前用户全部地址 |
+| 加入购物车 | POST `/shoppingCart/add` | 同菜品/套餐累加数量 |
+| 查看购物车 | GET `/shoppingCart/list` | 当前用户购物车 |
+| 清空购物车 | DELETE `/shoppingCart/clean` | 按用户清空 |
+| 用户下单 | POST `/order/submit` | {addressBookId, payMethod, remark}，写订单+明细并清空购物车 |
 
 ## 🔐 权限说明
 
