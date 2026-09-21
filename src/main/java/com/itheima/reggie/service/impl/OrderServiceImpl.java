@@ -59,9 +59,15 @@ public class OrderServiceImpl extends ServiceImpl<OrderMapper, Orders> implement
 
         //查询用户数据
         User user = userService.getById(userId);
+        if(user == null){
+            throw new CustomException("登录用户信息有误，请退出后重新登录");
+        }
 
         //查询地址数据
         Long addressBookId = orders.getAddressBookId();
+        if(addressBookId == null){
+            throw new CustomException("请先选择收货地址");
+        }
         AddressBook addressBook = addressBookService.getById(addressBookId);
         if(addressBook == null){
             throw new CustomException("用户地址信息有误，不能下单");

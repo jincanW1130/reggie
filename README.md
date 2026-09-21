@@ -194,4 +194,36 @@ Copy-Item dish-images\* D:\img\ -Exclude manifest.json
     - 仅允许修改自己的资料（姓名/手机号等非状态字段）。
 - 登录/退出、菜品与分类等业务接口对所有已登录员工开放。
 
+## 🛒 下单相关修复说明
+
+### 1. C端个人接口必须使用 C端登录态（`LoginCheckFilter`）
+同一个浏览器里可能同时存在**后台管理员（`employee`）**和**C端用户（`user`）**两个登录态。
+如果统一优先取管理员登录态，购物车 / 地址 / 订单就会被记到管理员 id 上，
+下单时还会因为「管理员 id 并不是 C端用户」而报错。
+
+因此以下接口现在**只认 C端登录态**，未登录时返回 `NOTLOGIN`，由 `front/js/request.js` 跳转到 C端登录页：
+
+| 接口 | 说明 |
+| --- | --- |
+| `/shoppingCart/**` | 购物车 |
+| `/addressBook/**` | 地址簿 |
+| `/order/submit`、`/order/userPage`、`/order/list`、`/order/again` | 下单与我的订单 |
+| `/user/loginout` | C端退出登录 |
+
+后台管理页面不使用这些路径（后台订单用 `/order/page`、`PUT /order`），所以后台功能不受影响；
+`/dish/list`、`/category/list`、`/setmeal/list` 等菜单类接口两侧共用，保持原来的放行逻辑。
+
+> C端登录：手机号 + 验证码（`/user/sendMsg` 生成的 4 位验证码打印在控制台日志中，格式 `code=xxxx`），
+> 新手机号会自动注册。
+
+### 2. 订单页收货地址同步（`front/page/add-order.html`）
+原来只在页面 `created()` 时取一次默认地址。从地址页返回时浏览器可能直接复用缓存页面（bfcache），
+`created()` 不会再次执行，页面上还是旧地址，点“去支付”就会发出**不带 `addressBookId`** 的请求，
+后端只能报「用户地址信息有误，不能下单」。现在：
+
+- 监听 `pageshow` / `visibilitychange`，页面每次重新显示都同步一次默认地址；
+- 点“去支付”前先校验：没有地址 → 提示“请先选择收货地址”并跳转地址页；购物车为空 → 提示不下单；
+- 地址页选中地址后改为「先设为默认，再重新加载订单页」，不再用 `history.go(-1)`；
+- 后端 `OrderServiceImpl.submit()` 增加参数兜底：`addressBookId` 为空 → “请先选择收货地址”，用户不存在 → “登录用户信息有误，请退出后重新登录”。
+
 > 技术栈：Spring Boot 2.4.5 · Spring MVC · MyBatis-Plus 3.4.2 · MySQL · Druid · Lombok · Fastjson

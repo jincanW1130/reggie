@@ -135,28 +135,60 @@
                 created(){
                     this.initData()
                 },
-                mounted(){},
+                mounted(){
+                    //从地址页面返回时，浏览器可能直接复用缓存中的页面(bfcache)，
+                    //此时 created 不会再次执行，页面上的收货地址还是旧数据，
+                    //所以每次页面重新显示时都同步一次默认地址
+                    window.addEventListener('pageshow', () => {
+                        this.refreshAddress()
+                    })
+                    document.addEventListener('visibilitychange', () => {
+                        if(!document.hidden){
+                            this.refreshAddress()
+                        }
+                    })
+                },
                 methods:{
                     goBack(){
                         history.go(-1)
                     },
                     initData(){
                         //获取默认的地址
-                        this.defaultAddress()
+                        this.ensureAddress()
                         //获取购物车的商品
                         this.getCartData()
                     },
-                    //获取默认地址
-                    async defaultAddress(){
-                        const res = await  getDefaultAddressApi()
-                        if(res.code === 1){
-                           this.address = res.data
-                           this.getFinishTime()
-                        }else{
-                            window.requestAnimationFrame(()=>{
-                                window.location.href = '/front/page/address-edit.html'
-                            })
+                    //重新同步默认地址(仅刷新数据，不做页面跳转)
+                    async refreshAddress(){
+                        const res = await getDefaultAddressApi()
+                        if(res.code === 1 && res.data && res.data.id){
+                            this.address = res.data
+                            this.getFinishTime()
                         }
+                    },
+                    //确保页面上有可用的收货地址，返回是否已就绪
+                    async ensureAddress(){
+                        if(this.address && this.address.id){
+                            return true
+                        }
+                        const res = await getDefaultAddressApi()
+                        if(res.code === 1 && res.data && res.data.id){
+                            this.address = res.data
+                            this.getFinishTime()
+                            return true
+                        }
+                        //没有默认地址：已有地址就去地址列表里选，一个地址都没有就去新增
+                        let hasAddress = false
+                        try{
+                            const listRes = await addressListApi()
+                            hasAddress = listRes.code === 1 && listRes.data && listRes.data.length > 0
+                        }catch(e){
+                            hasAddress = false
+                        }
+                        window.requestAnimationFrame(()=>{
+                            window.location.href = hasAddress ? '/front/page/address.html' : '/front/page/address-edit.html'
+                        })
+                        return false
                     },
                     //获取送达时间
                     getFinishTime(){
@@ -186,6 +218,16 @@
                         }
                     },
                     async goToPaySuccess(){
+                        //地址可能在页面缓存期间没有同步，这里兜底再取一次，避免提交空的地址id
+                        const addressReady = await this.ensureAddress()
+                        if(!addressReady){
+                            this.$notify({ type:'warning', message:'请先选择收货地址'});
+                            return
+                        }
+                        if(!this.cartData || this.cartData.length < 1){
+                            this.$notify({ type:'warning', message:'购物车为空，不能下单'});
+                            return
+                        }
                         const params = {
                             remark:this.note,
                             payMethod:1,

@@ -68,7 +68,31 @@ public class LoginCheckFilter implements Filter{
             return;
         }
 
-        //4、判断登录状态，如果已登录，则直接放行
+        //4、移动端(C端)个人业务接口必须使用C端登录态
+        //   原因：同一个浏览器里可能同时存在后台管理员(employee)和C端用户(user)两个登录态，
+        //   如果统一优先取管理员登录态，购物车/地址/订单就会被记到管理员id上，
+        //   下单时还会因为管理员id并不是C端用户而报"用户地址信息有误"或直接报错。
+        if(checkUserApi(requestURI)){
+            Long userId = (Long) request.getSession().getAttribute("user");
+            if(userId == null){
+                log.info("C端接口未登录：{}",requestURI);
+                //返回 NOTLOGIN，由前端 request.js 统一跳转到C端登录页
+                response.setContentType("application/json;charset=utf-8");
+                response.getWriter().write(JSON.toJSONString(R.error("NOTLOGIN")));
+                return;
+            }
+            log.info("移动端用户已登录，用户id为：{}",userId);
+            BaseContext.setCurrentId(userId);
+            try {
+                filterChain.doFilter(request,response);
+            } finally {
+                //请求处理完毕后移除，避免Tomcat线程复用造成数据串扰
+                BaseContext.removeCurrentId();
+            }
+            return;
+        }
+
+        //5、判断登录状态，如果已登录，则直接放行
         if(request.getSession().getAttribute("employee") != null){
             log.info("用户已登录，用户id为：{}",request.getSession().getAttribute("employee"));
             //将当前登录用户的id存入ThreadLocal(公共字段自动填充等场景使用)
@@ -83,7 +107,7 @@ public class LoginCheckFilter implements Filter{
             return;
         }
 
-        //4-2、判断移动端(C端)登录状态，如果已登录，则直接放行
+        //5-2、判断移动端(C端)登录状态，如果已登录，则直接放行
         if(request.getSession().getAttribute("user") != null){
             log.info("移动端用户已登录，用户id为：{}",request.getSession().getAttribute("user"));
             Long userId = (Long) request.getSession().getAttribute("user");
@@ -98,17 +122,39 @@ public class LoginCheckFilter implements Filter{
 
         log.info("用户未登录");
 
-        //5、如果未登录，判断本次请求的类型
-        //  5.1 访问后台页面(html)时，直接重定向到登录页面
+        //6、如果未登录，判断本次请求的类型
+        //  6.1 访问后台页面(html)时，直接重定向到登录页面
         if(requestURI.startsWith("/backend")){
             log.info("未登录访问页面，重定向到登录页：{}",requestURI);
             response.sendRedirect("/backend/page/login/login.html");
             return;
         }
-        //  5.2 访问业务接口时，通过输出流返回未登录结果，由前端拦截处理
+        //  6.2 访问业务接口时，通过输出流返回未登录结果，由前端拦截处理
         response.setContentType("application/json;charset=utf-8");
         response.getWriter().write(JSON.toJSONString(R.error("NOTLOGIN")));
         return;
+    }
+
+    /**
+     * 移动端(C端)个人业务接口：只允许C端登录用户访问
+     * 说明：这些接口只会被 /front 下的移动端页面调用，后台管理页面不使用它们，
+     *      所以在这里要求C端登录态不会影响后台管理功能。
+     */
+    public static final String[] USER_API_URLS = new String[]{
+            "/shoppingCart/**",     //购物车
+            "/addressBook/**",      //地址簿
+            "/order/submit",        //下单
+            "/order/userPage",      //我的订单
+            "/order/list",          //订单列表
+            "/order/again",         //再来一单
+            "/user/loginout"        //C端退出登录
+    };
+
+    /**
+     * 判断是否为移动端(C端)个人业务接口
+     */
+    public boolean checkUserApi(String requestURI){
+        return check(USER_API_URLS, requestURI);
     }
 
     /**
