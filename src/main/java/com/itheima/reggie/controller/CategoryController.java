@@ -95,4 +95,19 @@ public class CategoryController {
         categoryService.updateById(category);
         return R.success("修改分类信息成功");
     }
+
+    /**
+     * 根据id查询分类信息
+     * @param id
+     * @return
+     */
+    @GetMapping("/{id}")
+    public R<Category> getById(@PathVariable Long id){
+        log.info("根据id查询分类信息：{}", id);
+        Category category = categoryService.getById(id);
+        if (category != null) {
+            return R.success(category);
+        }
+        return R.error("没有查询到对应分类信息");
+    }
 }

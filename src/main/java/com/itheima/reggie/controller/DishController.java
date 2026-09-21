@@ -157,4 +157,29 @@ public class DishController {
         dishService.updateWithFlavor(dishDto);
         return R.success("修改菜品成功");
     }
+
+    /**
+     * 删除菜品(支持批量；同时删除口味数据，起售中的菜品不可删除)
+     * @param ids
+     * @return
+     */
+    @DeleteMapping
+    public R<String> delete(@RequestParam List<Long> ids){
+        log.info("删除菜品，ids为：{}", ids);
+        dishService.removeWithFlavor(ids);
+        return R.success("菜品删除成功");
+    }
+
+    /**
+     * 批量修改菜品状态：起售/停售
+     * @param status 1起售 0停售
+     * @param ids
+     * @return
+     */
+    @PostMapping("/status/{status}")
+    public R<String> status(@PathVariable Integer status, @RequestParam List<Long> ids){
+        log.info("修改菜品状态：status={}, ids={}", status, ids);
+        dishService.updateStatus(status, ids);
+        return R.success("菜品状态修改成功");
+    }
 }

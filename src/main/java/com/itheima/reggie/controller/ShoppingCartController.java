@@ -95,4 +95,44 @@ public class ShoppingCartController {
         shoppingCartService.remove(queryWrapper);
         return R.success("清空购物车成功");
     }
+
+    /**
+     * 减少购物车中菜品/套餐的数量(移动端"－"按钮)
+     * 数量为 1 时再减则直接移除该记录，返回 number=0 供前端移除展示
+     * @param shoppingCart
+     * @return
+     */
+    @PostMapping("/sub")
+    public R<ShoppingCart> sub(@RequestBody ShoppingCart shoppingCart){
+        log.info("购物车减少数量：{}", shoppingCart);
+
+        Long currentId = BaseContext.getCurrentId();
+        LambdaQueryWrapper<ShoppingCart> queryWrapper = new LambdaQueryWrapper<>();
+        queryWrapper.eq(ShoppingCart::getUserId, currentId);
+        if (shoppingCart.getDishId() != null) {
+            queryWrapper.eq(ShoppingCart::getDishId, shoppingCart.getDishId());
+        } else {
+            queryWrapper.eq(ShoppingCart::getSetmealId, shoppingCart.getSetmealId());
+        }
+
+        ShoppingCart cartServiceOne = shoppingCartService.getOne(queryWrapper);
+        if (cartServiceOne == null) {
+            //购物车中已不存在该记录
+            ShoppingCart empty = new ShoppingCart();
+            empty.setNumber(0);
+            return R.success(empty);
+        }
+
+        Integer number = cartServiceOne.getNumber();
+        if (number != null && number > 1) {
+            //数量减一
+            cartServiceOne.setNumber(number - 1);
+            shoppingCartService.updateById(cartServiceOne);
+        } else {
+            //数量为1时，直接删除该记录
+            shoppingCartService.removeById(cartServiceOne.getId());
+            cartServiceOne.setNumber(0);
+        }
+        return R.success(cartServiceOne);
+    }
 }

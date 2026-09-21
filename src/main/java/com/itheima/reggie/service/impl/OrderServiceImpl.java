@@ -2,13 +2,16 @@ package com.itheima.reggie.service.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.toolkit.IdWorker;
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.itheima.reggie.common.BaseContext;
 import com.itheima.reggie.common.CustomException;
+import com.itheima.reggie.dto.OrdersDto;
 import com.itheima.reggie.entity.*;
 import com.itheima.reggie.mapper.OrderMapper;
 import com.itheima.reggie.service.*;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -107,5 +110,82 @@ public class OrderServiceImpl extends ServiceImpl<OrderMapper, Orders> implement
 
         //清空购物车数据
         shoppingCartService.remove(wrapper);
+    }
+
+    /**
+     * 移动端：当前用户订单分页(含订单明细)
+     * @param page
+     * @param pageSize
+     * @return
+     */
+    @Override
+    public Page<OrdersDto> userPage(int page, int pageSize) {
+        Long userId = BaseContext.getCurrentId();
+
+        //分页查询当前用户的订单，按下单时间倒序
+        Page<Orders> pageInfo = new Page<>(page, pageSize);
+        LambdaQueryWrapper<Orders> wrapper = new LambdaQueryWrapper<>();
+        wrapper.eq(Orders::getUserId, userId);
+        wrapper.orderByDesc(Orders::getOrderTime);
+        this.page(pageInfo, wrapper);
+
+        //转换为 OrdersDto 并封装订单明细
+        Page<OrdersDto> dtoPage = new Page<>();
+        BeanUtils.copyProperties(pageInfo, dtoPage, "records");
+        List<OrdersDto> list = pageInfo.getRecords().stream().map((item) -> {
+            OrdersDto ordersDto = new OrdersDto();
+            BeanUtils.copyProperties(item, ordersDto);
+
+            LambdaQueryWrapper<OrderDetail> detailWrapper = new LambdaQueryWrapper<>();
+            detailWrapper.eq(OrderDetail::getOrderId, item.getId());
+            ordersDto.setOrderDetails(orderDetailService.list(detailWrapper));
+
+            return ordersDto;
+        }).collect(Collectors.toList());
+        dtoPage.setRecords(list);
+
+        return dtoPage;
+    }
+
+    /**
+     * 移动端：再来一单(把该订单的明细重新加入购物车)
+     * @param orders
+     */
+    @Override
+    @Transactional
+    public void again(Orders orders) {
+        Long userId = BaseContext.getCurrentId();
+
+        //查询订单
+        Orders order = this.getById(orders.getId());
+        if (order == null) {
+            throw new CustomException("订单不存在");
+        }
+
+        //查询订单明细
+        LambdaQueryWrapper<OrderDetail> wrapper = new LambdaQueryWrapper<>();
+        wrapper.eq(OrderDetail::getOrderId, order.getId());
+        List<OrderDetail> orderDetails = orderDetailService.list(wrapper);
+        if (orderDetails == null || orderDetails.size() == 0) {
+            throw new CustomException("订单明细为空，不能再来一单");
+        }
+
+        //订单明细转换为购物车数据
+        List<ShoppingCart> shoppingCarts = orderDetails.stream().map((item) -> {
+            ShoppingCart shoppingCart = new ShoppingCart();
+            shoppingCart.setName(item.getName());
+            shoppingCart.setImage(item.getImage());
+            shoppingCart.setUserId(userId);
+            shoppingCart.setDishId(item.getDishId());
+            shoppingCart.setSetmealId(item.getSetmealId());
+            shoppingCart.setDishFlavor(item.getDishFlavor());
+            shoppingCart.setNumber(item.getNumber());
+            shoppingCart.setAmount(item.getAmount());
+            shoppingCart.setCreateTime(LocalDateTime.now());
+            return shoppingCart;
+        }).collect(Collectors.toList());
+
+        //批量加入购物车
+        shoppingCartService.saveBatch(shoppingCarts);
     }
 }

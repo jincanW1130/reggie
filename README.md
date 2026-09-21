@@ -57,14 +57,39 @@
 - **下单**：`POST /order/submit` → `OrderService.submit`（`@Transactional`）：校验购物车非空、校验收货地址、用 `IdWorker` 生成订单号、`AtomicInteger` 累加总金额、写入 orders 一条 + order_detail 多条、下单后清空购物车
 - 配套新增 `AddressBook` / `ShoppingCart` / `Orders` / `OrderDetail` 实体及其 Mapper、Service 分层
 
+## ✅ 补充完成：前端页面所需接口（课件 Day07+ 内容）
+
+课程提供的静态页面里还有一批「有入口、后端未实现」的接口，访问时会报 **404 / 405**（如菜品删除、菜品起售停售、套餐修改回显、订单管理等）。本仓库已按课程风格补齐，页面按钮全部可用：
+
+| 功能 | 方法 | 路径 | 说明 |
+|---|---|---|---|
+| 菜品批量删除 | DELETE | `/dish?ids=` | 起售中的菜品不可删除（`菜品正在售卖中，不能删除`），同时清理 dish_flavor |
+| 菜品起售/停售 | POST | `/dish/status/{status}?ids=` | status 1 起售 0 停售，支持批量 |
+| 套餐回显 | GET | `/setmeal/{id}` | 返回 `SetmealDto`（含 setmealDishes） |
+| 套餐修改 | PUT | `/setmeal` | 套餐信息 + 关联菜品「先删后插」更新 |
+| 套餐起售/停售 | POST | `/setmeal/status/{status}?ids=` | 支持批量 |
+| 套餐菜品明细 | GET | `/setmeal/dish/{id}` | 移动端套餐详情（菜品图片/名称/价格 + 份数） |
+| 订单分页（后台） | GET | `/order/page` | 支持 number（订单号）、beginTime/endTime（下单时间范围） |
+| 订单状态修改 | PUT | `/order` | 派送 / 完成 |
+| 订单明细 | GET | `/orderDetail/{id}` | 按订单 id 查询明细（新增 `OrderDetailController`） |
+| 我的订单 | GET | `/order/userPage` | 当前用户订单分页，含 `orderDetails` 明细 |
+| 订单列表 | GET | `/order/list` | 当前用户全部订单 |
+| 再来一单 | POST | `/order/again` | 把该订单明细重新加入购物车 |
+| 购物车减一 | POST | `/shoppingCart/sub` | 数量 >1 减一；=1 时移除并返回 number=0 |
+| 最近地址 | GET | `/addressBook/lastUpdate` | 当前用户最近更新的一条地址 |
+| 分类详情 | GET | `/category/{id}` | 按 id 查询分类 |
+| C端退出 | POST | `/user/loginout` | 清理 Session 中的登录用户 |
+
+> 已用脚本对前端 `api/*.js` 中列出的 **50 个接口调用**做全量扫描：**0 个 404 / 405**；并用 49 条真实业务用例（含菜品新增-停售-修改-删除、套餐回显-修改-状态-删除、下单-我的订单-再来一单、购物车增减、地址默认切换等）做了端到端回归，全部通过。
+
 ## 📁 项目结构
 
 ```
 src/main/java/com/itheima/reggie/
 ├── common      # 通用结果 R、全局异常处理、Jackson 对象转换器、BaseContext(ThreadLocal)、MyMetaObjectHandler(公共字段填充)、CustomException
 ├── config      # WebMvcConfig(静态资源映射/消息转换器)、MybatisPlusConfig(分页插件)
-├── controller  # EmployeeController、CategoryController、DishController、SetmealController、CommonController(文件上传下载)、UserController(C端登录)、AddressBookController、ShoppingCartController、OrderController
-├── dto         # DishDto（菜品 + 口味 + 分类名称）、SetmealDto（套餐 + 关联菜品 + 分类名称）
+├── controller  # EmployeeController、CategoryController、DishController、SetmealController、CommonController(文件上传下载)、UserController(C端登录)、AddressBookController、ShoppingCartController、OrderController、OrderDetailController
+├── dto         # DishDto（菜品 + 口味 + 分类名称）、SetmealDto（套餐 + 关联菜品 + 分类名称）、OrdersDto（订单 + 明细）
 ├── entity      # Employee / Category / Dish / DishFlavor / Setmeal / SetmealDish / User / AddressBook / ShoppingCart / Orders / OrderDetail
 ├── filter      # LoginCheckFilter（后台员工 + C端用户登录校验，登录id写入ThreadLocal）
 ├── mapper      # 各实体对应的 Mapper

@@ -119,4 +119,17 @@ public class AddressBookController {
         //SQL:select * from address_book where user_id = ? order by update_time desc
         return R.success(addressBookService.list(queryWrapper));
     }
+
+    /**
+     * 查询当前用户最近更新的一条地址
+     */
+    @GetMapping("/lastUpdate")
+    public R<AddressBook> lastUpdate() {
+        LambdaQueryWrapper<AddressBook> queryWrapper = new LambdaQueryWrapper<>();
+        queryWrapper.eq(AddressBook::getUserId, BaseContext.getCurrentId());
+        queryWrapper.orderByDesc(AddressBook::getUpdateTime);
+        queryWrapper.last("limit 1");
+        AddressBook addressBook = addressBookService.getOne(queryWrapper);
+        return R.success(addressBook);
+    }
 }

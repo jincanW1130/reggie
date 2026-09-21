@@ -1,6 +1,7 @@
 package com.itheima.reggie.service.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.itheima.reggie.common.CustomException;
 import com.itheima.reggie.dto.SetmealDto;
@@ -10,6 +11,7 @@ import com.itheima.reggie.mapper.SetmealMapper;
 import com.itheima.reggie.service.SetmealDishService;
 import com.itheima.reggie.service.SetmealService;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -70,5 +72,71 @@ public class SetmealServiceImpl extends ServiceImpl<SetmealMapper, Setmeal> impl
         lambdaQueryWrapper.in(SetmealDish::getSetmealId, ids);
         //删除关系表中的数据----setmeal_dish
         setmealDishService.remove(lambdaQueryWrapper);
+    }
+
+    /**
+     * 修改套餐，同时更新套餐与菜品的关联关系
+     * 关联关系统一按"先删除，后添加"的方式处理
+     * @param setmealDto
+     */
+    @Override
+    @Transactional
+    public void updateWithDish(SetmealDto setmealDto) {
+        //更新setmeal表基本信息
+        this.updateById(setmealDto);
+
+        //清理当前套餐对应的菜品关联数据---setmeal_dish表的delete操作
+        LambdaQueryWrapper<SetmealDish> queryWrapper = new LambdaQueryWrapper<>();
+        queryWrapper.eq(SetmealDish::getSetmealId, setmealDto.getId());
+        setmealDishService.remove(queryWrapper);
+
+        //添加当前提交过来的关联数据---setmeal_dish表的insert操作
+        List<SetmealDish> setmealDishes = setmealDto.getSetmealDishes();
+        if (setmealDishes != null && setmealDishes.size() > 0) {
+            setmealDishes = setmealDishes.stream().map((item) -> {
+                item.setSetmealId(setmealDto.getId());
+                //回显数据带有原关联id，重新插入前置空，避免主键冲突
+                item.setId(null);
+                return item;
+            }).collect(Collectors.toList());
+            setmealDishService.saveBatch(setmealDishes);
+        }
+    }
+
+    /**
+     * 根据id查询套餐信息和对应的菜品关联信息
+     * @param id
+     * @return
+     */
+    @Override
+    public SetmealDto getByIdWithDish(Long id) {
+        //查询套餐基本信息
+        Setmeal setmeal = this.getById(id);
+        if (setmeal == null) {
+            return null;
+        }
+
+        SetmealDto setmealDto = new SetmealDto();
+        BeanUtils.copyProperties(setmeal, setmealDto);
+
+        //查询套餐关联的菜品
+        LambdaQueryWrapper<SetmealDish> queryWrapper = new LambdaQueryWrapper<>();
+        queryWrapper.eq(SetmealDish::getSetmealId, id);
+        setmealDto.setSetmealDishes(setmealDishService.list(queryWrapper));
+
+        return setmealDto;
+    }
+
+    /**
+     * 批量修改套餐状态(起售/停售)
+     * @param status
+     * @param ids
+     */
+    @Override
+    public void updateStatus(Integer status, List<Long> ids) {
+        LambdaUpdateWrapper<Setmeal> updateWrapper = new LambdaUpdateWrapper<>();
+        updateWrapper.in(Setmeal::getId, ids);
+        updateWrapper.set(Setmeal::getStatus, status);
+        this.update(updateWrapper);
     }
 }
